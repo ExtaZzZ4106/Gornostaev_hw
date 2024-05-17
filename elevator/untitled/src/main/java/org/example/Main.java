@@ -5,34 +5,33 @@ import java.io.IOException;
 import java.util.Scanner;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.sql.*;
 
 public class Main {
+
+
+    //   jdbc:mysql:aws://localhost:3306/elevator/tables/logs_
+
+
    //--------------создание текстового файла-------------\\
-    public static void writeToFile(String folderPath, String fileName, String content) {
-        try {
-            // Создаем новый файл в указанной папке
-            File folder = new File(folderPath);
-            File file = new File(folder, fileName);
 
-            // Если файл не существует, создаем его
-            if (!file.exists()) {
-                file.createNewFile();
-            }
 
-            // Записываем дату
-            LocalDateTime now = LocalDateTime.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String timestamp = now.format(formatter);
+    public static void writeToDatabase(String timestamp, String content) {
+        String url = "jdbc:mysql://localhost:3306/elevator";
+        String username = "root";
+        String password = "123456789";
 
-            // Записываем текст в файл
-            FileWriter writer = new FileWriter(file, true); // true для дозаписи в файл
-            writer.write(timestamp + " - " + content + "\n"); // Добавляем перенос строки после каждой записи
-            writer.flush();
-            writer.close();
-        } catch (IOException e) {
+        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+            String sql = "INSERT INTO logs_ (timestamp, message) VALUES (?, ?)";
+            PreparedStatement statement = connection.prepareStatement(sql);
+            statement.setString(1, timestamp);
+            statement.setString(2, content);
+            statement.executeUpdate();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public static void main(String[] args) {
 
@@ -40,7 +39,7 @@ public class Main {
         int currentFloor = 1; // Начальный этаж
 
 
-        //------цикл сканера ввода этажей-----\\\
+        //------цикл сканера ввода этажей-----\\
         while (true) {
             Scanner scanner = new Scanner(System.in);
             System.out.print("Введите номер этажа, на который вы хотите подняться (или 'q' для выхода): ");
@@ -66,16 +65,18 @@ public class Main {
         }
     }
 
-    //------механизм работы-----\\\
+    //------механизм работы-----\\
     public static void move(int currentFloor, int targetFloor) {
-        String folderPath = System.getProperty("user.dir");
-        String fileName = "lift_movements.txt";
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String timestamp = now.format(formatter);
 
         if (currentFloor < targetFloor) {
             // Лифт поднимается
             for (int floor = currentFloor; floor <= targetFloor; floor++) {
-                System.out.println("Лифт поднимается на этаж: " + floor);
-                writeToFile(folderPath, fileName, "Лифт поднимается на этаж: " + floor);
+                String message = "Лифт поднимается на этаж: " + floor;
+                System.out.println(message);
+                writeToDatabase(timestamp, message);
                 try {
                     Thread.sleep(1000); // Задержка в 1 секунду
                 } catch (InterruptedException e) {
@@ -85,8 +86,9 @@ public class Main {
         } else if (currentFloor > targetFloor) {
             // Лифт опускается
             for (int floor = currentFloor; floor >= targetFloor; floor--) {
-                System.out.println("Лифт опускается на этаж: " + floor);
-                writeToFile(folderPath, fileName, "Лифт опускается на этаж: " + floor);
+                String message = "Лифт опускается на этаж: " + floor;
+                System.out.println(message);
+                writeToDatabase(timestamp, message);
                 try {
                     Thread.sleep(1000); // Задержка в 1 секунду
                 } catch (InterruptedException e) {
@@ -94,8 +96,9 @@ public class Main {
                 }
             }
         } else {
-            System.out.println("Вы находитесь на целевом этаже: "+currentFloor);
-            writeToFile(folderPath, fileName, "Вы находитесь на целевом этаже: "+currentFloor);
+            String message = "Вы находитесь на целевом этаже: " + currentFloor;
+            System.out.println(message);
+            writeToDatabase(timestamp, message);
         }
     }
 
